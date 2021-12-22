@@ -72,7 +72,7 @@ def print_wb_output():
 
     encoder.eval()
     depth_decoder.eval()    
-    input_image = pil.open("./images/000000.png").convert('RGB')
+    input_image = pil.open("images/000000.png").convert('RGB')
     input_image = input_image.resize((feed_width, feed_height), pil.LANCZOS)
     input_image = transforms.ToTensor()(input_image).unsqueeze(0)
     
@@ -81,6 +81,10 @@ def print_wb_output():
     depth_outputs = depth_decoder(features)
     
     i = input_image.data.numpy()
+    j = np.array(i,dtype=np.float32)
+    j = (j-0.45)/0.225
+    j = np.array(j,dtype=np.float32)
+    j.tofile("tkDNN_bin/debug/input2.bin",format="f")
     i = np.array(i,dtype=np.float32)
     i.tofile("tkDNN_bin/debug/input.bin",format="f")
 
@@ -135,33 +139,15 @@ def print_wb_output():
       
     for n,m in encoder.named_modules():
         t = '-'.join(n.split('.'))
-        if (' of BasicBlock' in str(m.type) and 'BatchNorm2d' in str(m.type)):
+        if ('of BatchNorm2d' in str(m.type)):
             open_conv_twice = True
             print("open conv twice")
         
-        if('of BatchNorm2d' in str(m.type) and not 'of BasicBlock' in str(m.type)):
-            file_name = "tkDNN_bin/layers/encoder/" + t + ".bin"
-            f = open(file_name,mode='wb')
-            b = m._parameters['bias'].data.numpy()
-            b = np.array(b, dtype=np.float32)
-            s = m._parameters['weight'].data.numpy()
-            s = np.array(s, dtype=np.float32)
-            rm = m.running_mean.data.numpy()
-            rm = np.array(rm, dtype=np.float32)
-            rv = m.running_var.data.numpy()
-            rv = np.array(rv, dtype=np.float32)
-            bin_write(f, b)
-            bin_write(f, s)
-            bin_write(f, rm)
-            bin_write(f, rv)
-            f.close()
-            f = None
-            continue
 
         if not(' of Conv2d' in str(m.type) or ' of BatchNorm2d' in str(m.type) or ' of Linear' in str(m.type)):
             continue
 
-        if ' of Conv2d' in str(m.type) or ' of Linear' in str(m.type) or ' of Sigmoid':
+        if ' of Conv2d' in str(m.type) or ' of Linear' in str(m.type) or ' of Sigmoid' in str(m.type):
 
             if f is not None:
                 if bias_shape != 0:
@@ -200,18 +186,12 @@ def print_wb_output():
             rm = np.array(rm, dtype=np.float32)
             rv = m.running_var.cpu().data.numpy()
             rv = np.array(rv, dtype=np.float32)
-            if('of BatchNorm2d' in str(m.type)):
-                bin_write(f2, b)
-                bias_shape = 0
-                bin_write(f2, s)
-                bin_write(f2, rm)
-                bin_write(f2, rv)
-            else:
-                bin_write(f, b)
-                bias_shape = 0
-                bin_write(f, s)
-                bin_write(f, rm)
-                bin_write(f, rv)
+            bin_write(f, b)
+            print(b)
+            bias_shape = 0
+            bin_write(f, s)
+            bin_write(f, rm)
+            bin_write(f, rv)
 
 
             print("    s shape:", np.shape(s))
@@ -222,6 +202,11 @@ def print_wb_output():
             bias_shape = w.shape[0]
             if b.size > 0:
                 bin_write(f, b)
+                bias_shape = 0
+            else:
+                print('writing empty biases')
+                print("    bias shape:", bias_shape)
+                bin_write(f, np.zeros(bias_shape))
                 bias_shape = 0
                 
             if open_conv_twice:
@@ -234,7 +219,6 @@ def print_wb_output():
 
         if ' of BatchNorm2d' in str(m.type) or ' of Linear' in str(m.type):
             if ' of BatchNorm2d' in str(m.type): 
-                f2.close()
                 print("close file")
                 f2 = None
             else: 
@@ -286,6 +270,8 @@ def print_wb_output():
         print("close file")
         f = None
 
+    print(encoder)
+    print(depth_decoder)
 
 if __name__ == '__main__':
     print_wb_output()
