@@ -82,6 +82,10 @@ def print_wb_output():
     depth_outputs = depth_decoder(features)
     
     i = input_image.data.numpy()
+    j = np.array(i,dtype=np.float32)
+    j = (j-0.45)/0.225
+    j = np.array(j,dtype=np.float32)
+    j.tofile("tkDNN_bin/debug/input2.bin",format="f")
     i = np.array(i,dtype=np.float32)
     print('input', np.shape(i))
     i.tofile("tkDNN_bin/debug/input.bin",format="f")
@@ -235,6 +239,8 @@ def print_wb_output():
         print("close file")
         f = None
 
+    print(encoder)
+    print(depth_decoder)
 
 if __name__ == '__main__':
     print_wb_output()
